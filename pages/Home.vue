@@ -1008,11 +1008,11 @@ export default {
             }
           });
         });
-        
+
         await new Promise((resolve, reject) => {
-          BX24.callMethod('crm.company.contact.items.add', {
-            'id': companyId.value,
-            'items': [{ 'CONTACT_ID': createdContact }]
+          BX24.callMethod('crm.company.contact.add', {
+            'ID': companyId.value,
+            'FIELDS': { 'CONTACT_ID': createdContact }
           }, (response) => {
             if (response.error()) {
               reject(response.error());
