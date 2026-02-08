@@ -948,129 +948,178 @@ export default {
     };
 
     // Функция для создания контакта
-    const createContact = async () => {
-      try {
-        if (!newContactData.FULL_NAME?.trim()) {
-          alert('Поле "ФИО" обязательно для заполнения');
-          return;
-        }
-        
-        if (!checkDuplicates()) {
-          const confirmCreate = confirm('Найдены возможные дубликаты. Хотите продолжить создание?\n\n' + 
-            duplicateMessages.value.map(m => m.message + m.contactName).join('\n'));
-          if (!confirmCreate) {
-            return;
-          }
-        }
-        
-        createLoading.value = true;
-        
-        const createData = {
-          NAME: newContactData.FULL_NAME?.split(' ')[1] || '',
-          LAST_NAME: newContactData.FULL_NAME?.split(' ')[0] || '',
-          SECOND_NAME: newContactData.FULL_NAME?.split(' ')[2] || '',
-          POST: newContactData.POST || '',
-          TYPE_ID: 'CLIENT'
-        };
-        
-        if (newContactData.UF_CRM_1753083765) {
-          createData.UF_CRM_1753083765 = newContactData.UF_CRM_1753083765;
-        }
-        
-        if (newContactData.UF_CRM_1753364801 && newContactData.UF_CRM_1753364801.length > 0) {
-          createData.UF_CRM_1753364801 = newContactData.UF_CRM_1753364801;
-        }
-        
-        if (newContactData.emailValue) {
-          createData.EMAIL = [{
-            VALUE: newContactData.emailValue,
-            VALUE_TYPE: 'WORK'
-          }];
-        }
-        
-        if (newContactData.phoneValue) {
-          createData.PHONE = [{
-            VALUE: newContactData.phoneValue,
-            VALUE_TYPE: 'WORK'
-          }];
-        }
-        
-        console.log('Создание контакта:', createData);
-        
-        const createdContact = await new Promise((resolve, reject) => {
-          BX24.callMethod('crm.contact.add', {
-            'fields': createData,
-          }, (response) => {
-            if (response.error()) {
-              reject(response.error());
-            } else {
-              resolve(response.data());
-            }
-          });
-        });
-
-        await new Promise((resolve, reject) => {
-          BX24.callMethod('crm.company.contact.add', {
-            'ID': companyId.value,
-            'FIELDS': { 'CONTACT_ID': createdContact }
-          }, (response) => {
-            if (response.error()) {
-              reject(response.error());
-            } else {
-              resolve(response.data());
-            }
-          });
-        });
-        
-        const loadedContact = await callApi(
-          "crm.contact.list", 
-          { ID: createdContact }, 
-          ["UF_CRM_1750766630", "NAME", "LAST_NAME", "SECOND_NAME", "POST", "TYPE_ID", "EMAIL", "PHONE", "UF_CRM_1753364801", "UF_CRM_1753083765", "UF_CRM_1756633452"]
-        );
-        
-        if (loadedContact[0]) {
-          loadedContact[0].FULL_NAME = `${loadedContact[0].LAST_NAME ? loadedContact[0].LAST_NAME : ""} ${loadedContact[0].NAME ? loadedContact[0].NAME : ""} ${loadedContact[0].SECOND_NAME ? loadedContact[0].SECOND_NAME : ""}`;
-          
-          if (loadedContact[0].UF_CRM_1750766630 && loadedContact[0].UF_CRM_1750766630.length > 0) {
-            const productIds = loadedContact[0].UF_CRM_1750766630.map(id => Number(id));
-
-            const medications = productIds
-              .map(id => products.value.find(product => product.id == Number(id)))
-              .map(product => product && product.title)
-              .filter(name => name !== undefined);
-
-            const directions = productIds
-              .map(id => products.value.find(product => product.id === Number(id)))
-              .map(product => {
-                if (!product) return [];
-                let values = Array.isArray(product.ufCrm26_1753365041) ?
-                  product.ufCrm26_1753365041 :
-                  [product.ufCrm26_1753365041];
-                return values.map(value => audienceTitles.value.get(String(value)) || String(value)).filter(d => d !== undefined);
-              });
-
-            loadedContact[0].medications = medications;
-            loadedContact[0].directions = directions;
-          }
-          
-          contacts.value = [...contacts.value, loadedContact[0]];
-        }
-        
-        createDialog.value = false;
-        alert('Контакт успешно создан и привязан к компании');
-        
-        Object.keys(newContactData).forEach(key => {
-          newContactData[key] = key.includes('UF_CRM') ? (key.includes('1753364801') ? [] : null) : '';
-        });
-        
-      } catch (error) {
-        console.error('Ошибка при создании контакта:', error);
-        alert('Произошла ошибка при создании контакта');
-      } finally {
-        createLoading.value = false;
+// Функция для создания контакта
+const createContact = async () => {
+  try {
+    if (!newContactData.FULL_NAME?.trim()) {
+      alert('Поле "ФИО" обязательно для заполнения');
+      return;
+    }
+    
+    if (!checkDuplicates()) {
+      const confirmCreate = confirm('Найдены возможные дубликаты. Хотите продолжить создание?\n\n' + 
+        duplicateMessages.value.map(m => m.message + m.contactName).join('\n'));
+      if (!confirmCreate) {
+        return;
       }
+    }
+    
+    createLoading.value = true;
+    
+    const createData = {
+      NAME: newContactData.FULL_NAME?.split(' ')[1] || '',
+      LAST_NAME: newContactData.FULL_NAME?.split(' ')[0] || '',
+      SECOND_NAME: newContactData.FULL_NAME?.split(' ')[2] || '',
+      POST: newContactData.POST || '',
+      TYPE_ID: 'CLIENT'
     };
+    
+    if (newContactData.UF_CRM_1753083765) {
+      createData.UF_CRM_1753083765 = newContactData.UF_CRM_1753083765;
+    }
+    
+    if (newContactData.UF_CRM_1753364801 && newContactData.UF_CRM_1753364801.length > 0) {
+      createData.UF_CRM_1753364801 = newContactData.UF_CRM_1753364801;
+    }
+    
+    if (newContactData.emailValue) {
+      createData.EMAIL = [{
+        VALUE: newContactData.emailValue,
+        VALUE_TYPE: 'WORK'
+      }];
+    }
+    
+    if (newContactData.phoneValue) {
+      createData.PHONE = [{
+        VALUE: newContactData.phoneValue,
+        VALUE_TYPE: 'WORK'
+      }];
+    }
+    
+    console.log('Создание контакта:', createData);
+    
+    const createdContact = await new Promise((resolve, reject) => {
+      BX24.callMethod('crm.contact.add', {
+        'fields': createData,
+      }, (response) => {
+        if (response.error()) {
+          reject(response.error());
+        } else {
+          resolve(response.data());
+        }
+      });
+    });
 
+    await new Promise((resolve, reject) => {
+      BX24.callMethod('crm.company.contact.add', {
+        'ID': companyId.value,
+        'FIELDS': { 'CONTACT_ID': createdContact }
+      }, (response) => {
+        if (response.error()) {
+          reject(response.error());
+        } else {
+          resolve(response.data());
+        }
+      });
+    });
+    
+    // Если мы в сделке, обновляем поле сделки UF_CRM_1754290331
+    if (enityId.value === 'CRM_DEAL_DETAIL_TAB') {
+      try {
+        // Получаем текущий список контактов из сделки
+        const dealData = await new Promise((resolve, reject) => {
+          BX24.callMethod('crm.deal.get', {
+            'id': dealId.value,
+          }, (response) => {
+            if (response.error()) {
+              reject(response.error());
+            } else {
+              resolve(response.data());
+            }
+          });
+        });
+        console.log(dealData.UF_CRM_1754290331);
+        dealData.UF_CRM_1754290331.push(createdContact)
+        console.log(dealData.UF_CRM_1754290331);
+        // Обновляем поле сделки
+        await new Promise((resolve, reject) => {
+          BX24.callMethod('crm.deal.update', {
+            'id': dealId.value,
+            'fields': { 'UF_CRM_1754290331': dealData.UF_CRM_1754290331 }
+          }, (response) => {
+            if (response.error()) {
+              reject(response.error());
+            } else {
+              resolve(response.data());
+            }
+          });
+        });
+
+      } catch (dealError) {
+        console.error('Ошибка при обновлении поля сделки:', dealError);
+        // Не прерываем создание контакта, просто логируем ошибку
+      }
+    }
+    
+    const loadedContact = await callApi(
+      "crm.contact.list", 
+      { ID: createdContact }, 
+      ["UF_CRM_1750766630", "NAME", "LAST_NAME", "SECOND_NAME", "POST", "TYPE_ID", "EMAIL", "PHONE", "UF_CRM_1753364801", "UF_CRM_1753083765", "UF_CRM_1756633452"]
+    );
+    
+    if (loadedContact[0]) {
+      loadedContact[0].FULL_NAME = `${loadedContact[0].LAST_NAME ? loadedContact[0].LAST_NAME : ""} ${loadedContact[0].NAME ? loadedContact[0].NAME : ""} ${loadedContact[0].SECOND_NAME ? loadedContact[0].SECOND_NAME : ""}`;
+      
+      if (loadedContact[0].UF_CRM_1750766630 && loadedContact[0].UF_CRM_1750766630.length > 0) {
+        const productIds = loadedContact[0].UF_CRM_1750766630.map(id => Number(id));
+
+        const medications = productIds
+          .map(id => products.value.find(product => product.id == Number(id)))
+          .map(product => product && product.title)
+          .filter(name => name !== undefined);
+
+        const directions = productIds
+          .map(id => products.value.find(product => product.id === Number(id)))
+          .map(product => {
+            if (!product) return [];
+            let values = Array.isArray(product.ufCrm26_1753365041) ?
+              product.ufCrm26_1753365041 :
+              [product.ufCrm26_1753365041];
+            return values.map(value => audienceTitles.value.get(String(value)) || String(value)).filter(d => d !== undefined);
+          });
+
+        loadedContact[0].medications = medications;
+        loadedContact[0].directions = directions;
+      }
+      
+      // Добавляем новый контакт в список
+      contacts.value.push(loadedContact[0]);
+      
+      // Обновляем contactsIds.value
+      contactsIds.value.push(loadedContact[0].ID);
+      
+      // Принудительно обновляем реактивные данные
+      contacts.value = [...contacts.value];
+      contactsIds.value = [...contactsIds.value];
+    }
+    
+    createDialog.value = false;
+    alert('Контакт успешно создан и привязан к компании' + (enityId.value === 'CRM_DEAL_DETAIL_TAB' ? ' и добавлен в сделку' : ''));
+    
+    // Сбрасываем данные формы
+    Object.keys(newContactData).forEach(key => {
+      newContactData[key] = key.includes('UF_CRM') ? (key.includes('1753364801') ? [] : null) : '';
+    });
+    
+    duplicateMessages.value = [];
+    
+  } catch (error) {
+    console.error('Ошибка при создании контакта:', error);
+    alert('Произошла ошибка при создании контакта');
+  } finally {
+    createLoading.value = false;
+  }
+};
     // Функция для отмены создания
     const cancelCreate = () => {
       createDialog.value = false;
@@ -1196,6 +1245,7 @@ export default {
           dealId.value = deal[0].ID;
           companyId.value = deal[0].COMPANY_ID;
           contactsList = deal[0].UF_CRM_1754290331;
+          console.log(contactsList);
           dealAudience.value = deal[0].UF_CRM_1753365812 || [];
           // Получаем ID мероприятия из поля сделки
           mailingEventId.value = deal[0].UF_CRM_1742797326 || null;
