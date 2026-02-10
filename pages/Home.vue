@@ -49,14 +49,35 @@
       <v-card>
         <v-card-text class="pa-4">
           <v-row>
-            <v-col cols="12">
-              <v-text-field
-                v-model="editContactData.FULL_NAME"
-                label="ФИО"
-                variant="outlined"
-                dense
-              ></v-text-field>
-            </v-col>
+            <v-col cols="12" sm="4">
+          <v-text-field
+            v-model="editContactData.LAST_NAME"
+            label="Фамилия"
+            variant="outlined"
+            dense
+          ></v-text-field>
+        </v-col>
+        
+        <!-- Имя -->
+        <v-col cols="12" sm="4">
+          <v-text-field
+            v-model="editContactData.NAME"
+            label="Имя"
+            variant="outlined"
+            dense
+          ></v-text-field>
+        </v-col>
+        
+        <!-- Отчество -->
+        <v-col cols="12" sm="4">
+          <v-text-field
+            v-model="editContactData.SECOND_NAME"
+            label="Отчество"
+            variant="outlined"
+            dense
+            clearable
+          ></v-text-field>
+        </v-col>
             
             <v-col cols="12">
               <v-text-field
@@ -169,15 +190,37 @@
           </v-alert>
           
           <v-row>
-            <v-col cols="12">
-              <v-text-field
-                v-model="newContactData.FULL_NAME"
-                label="ФИО *"
-                variant="outlined"
-                dense
-                required
-              ></v-text-field>
-            </v-col>
+            <v-col cols="12" sm="4">
+          <v-text-field
+            v-model="newContactData.LAST_NAME"
+            label="Фамилия *"
+            variant="outlined"
+            dense
+            required
+          ></v-text-field>
+        </v-col>
+        
+        <!-- Имя * -->
+        <v-col cols="12" sm="4">
+          <v-text-field
+            v-model="newContactData.NAME"
+            label="Имя *"
+            variant="outlined"
+            dense
+            required
+          ></v-text-field>
+        </v-col>
+        
+        <!-- Отчество -->
+        <v-col cols="12" sm="4">
+          <v-text-field
+            v-model="newContactData.SECOND_NAME"
+            label="Отчество"
+            variant="outlined"
+            dense
+            clearable
+          ></v-text-field>
+        </v-col>
             
             <v-col cols="12">
               <v-text-field
@@ -555,7 +598,9 @@ export default {
     // Данные для редактирования контакта
     const editContactData = reactive({
       ID: null,
-      FULL_NAME: '',
+      NAME: '',
+      LAST_NAME: '',
+      SECOND_NAME: '',
       POST: '',
       UF_CRM_1753083765: null,
       UF_CRM_1753364801: [],
@@ -565,7 +610,9 @@ export default {
 
     // Данные для создания контакта
     const newContactData = reactive({
-      FULL_NAME: '',
+      NAME: '',
+      LAST_NAME: '',
+      SECOND_NAME: '',
       POST: '',
       UF_CRM_1753083765: null,
       UF_CRM_1753364801: [],
@@ -576,7 +623,9 @@ export default {
     // Оригинальные данные для отмены изменений
     const originalContactData = reactive({
       ID: null,
-      FULL_NAME: '',
+      NAME: '',
+      LAST_NAME: '',
+      SECOND_NAME: '',
       POST: '',
       UF_CRM_1753083765: null,
       UF_CRM_1753364801: [],
@@ -759,20 +808,24 @@ export default {
     const editContact = (contact) => {
       // Сохраняем оригинальные данные
       Object.keys(originalContactData).forEach(key => {
-        originalContactData[key] = contact[key] || null;
+        originalContactData[key] = contact[key] || '';
       });
       
       // Заполняем данные для редактирования
       editContactData.ID = contact.ID;
-      editContactData.FULL_NAME = contact.FULL_NAME;
+      editContactData.LAST_NAME = contact.LAST_NAME || '';
+      editContactData.NAME = contact.NAME || '';
+      editContactData.SECOND_NAME = contact.SECOND_NAME || '';
       editContactData.POST = contact.POST || '';
       editContactData.UF_CRM_1753083765 = contact.UF_CRM_1753083765 ? String(contact.UF_CRM_1753083765) : null;
       editContactData.UF_CRM_1753364801 = contact.UF_CRM_1753364801 ? 
         contact.UF_CRM_1753364801.map(id => String(id)) : [];
       
+      // Извлекаем первый email
       editContactData.emailValue = contact.EMAIL && contact.EMAIL[0] ? 
         contact.EMAIL[0].VALUE : '';
       
+      // Извлекаем первый телефон
       editContactData.phoneValue = contact.PHONE && contact.PHONE[0] ? 
         contact.PHONE[0].VALUE : '';
       
@@ -786,6 +839,9 @@ export default {
         
         const updateData = {
           ID: editContactData.ID,
+          NAME: editContactData.NAME || '',
+          LAST_NAME: editContactData.LAST_NAME || '',
+          SECOND_NAME: editContactData.SECOND_NAME || '',
           POST: editContactData.POST || ''
         };
         
@@ -875,11 +931,18 @@ export default {
 
     // Функция для открытия диалога создания контакта
     const openCreateDialog = () => {
+      // Сбрасываем данные
       Object.keys(newContactData).forEach(key => {
-        newContactData[key] = key.includes('UF_CRM') ? (key.includes('1753364801') ? [] : null) : '';
+        if (key.includes('UF_CRM')) {
+          newContactData[key] = key.includes('1753364801') ? [] : null;
+        } else {
+          newContactData[key] = '';
+        }
       });
       
+      // Сбрасываем сообщения о дубликатах
       duplicateMessages.value = [];
+      
       createDialog.value = true;
     };
 
@@ -887,28 +950,52 @@ export default {
     const checkDuplicates = () => {
       duplicateMessages.value = [];
       
-      const fullName = newContactData.FULL_NAME?.trim().toLowerCase();
+      const lastName = newContactData.LAST_NAME?.trim().toLowerCase();
+      const firstName = newContactData.NAME?.trim().toLowerCase();
+      const middleName = newContactData.SECOND_NAME?.trim().toLowerCase();
+      
+      // Формируем полное ФИО для проверки
+      const fullName = `${lastName} ${firstName} ${middleName}`.trim().toLowerCase();
       const email = newContactData.emailValue?.trim().toLowerCase();
       const phone = newContactData.phoneValue?.trim();
       
-      if (fullName) {
-        const nameDuplicates = contacts.value.filter(contact => {
-          const contactFullName = contact.FULL_NAME?.toLowerCase();
-          return contactFullName && 
-                 (contactFullName === fullName || 
-                  contactFullName.includes(fullName) || 
-                  fullName.includes(contactFullName));
-        });
-        
-        nameDuplicates.forEach(duplicate => {
-          duplicateMessages.value.push({
-            type: 'fio',
-            message: `Контакт с похожим ФИО уже существует: `,
-            contactId: duplicate.ID,
-            contactName: duplicate.FULL_NAME
-          });
-        });
-      }
+      if (lastName || firstName) {
+    // Ищем контакты с похожим ФИО
+    const nameDuplicates = contacts.value.filter(contact => {
+      const contactLastName = contact.LAST_NAME?.toLowerCase() || '';
+      const contactFirstName = contact.NAME?.toLowerCase() || '';
+      const contactMiddleName = contact.SECOND_NAME?.toLowerCase() || '';
+      const contactFullName = `${contactLastName} ${contactFirstName} ${contactMiddleName}`.trim().toLowerCase();
+      
+      // Проверяем совпадение фамилии и имени
+      const lastNameMatch = lastName && contactLastName && 
+        (contactLastName === lastName || 
+         contactLastName.includes(lastName) || 
+         lastName.includes(contactLastName));
+      
+      const firstNameMatch = firstName && contactFirstName && 
+        (contactFirstName === firstName || 
+         contactFirstName.includes(firstName) || 
+         firstName.includes(contactFirstName));
+      
+      // Полное ФИО для более точной проверки
+      const fullNameMatch = fullName && contactFullName && 
+        (contactFullName === fullName || 
+         contactFullName.includes(fullName) || 
+         fullName.includes(contactFullName));
+      
+      return lastNameMatch || firstNameMatch || fullNameMatch;
+    });
+    
+    nameDuplicates.forEach(duplicate => {
+      duplicateMessages.value.push({
+        type: 'fio',
+        message: `Контакт с похожим ФИО уже существует: `,
+        contactId: duplicate.ID,
+        contactName: duplicate.FULL_NAME
+      });
+    });
+  }
       
       if (email) {
         const emailDuplicate = contacts.value.find(contact => 
@@ -951,8 +1038,8 @@ export default {
 // Функция для создания контакта
 const createContact = async () => {
   try {
-    if (!newContactData.FULL_NAME?.trim()) {
-      alert('Поле "ФИО" обязательно для заполнения');
+    if (!newContactData.LAST_NAME?.trim() || !newContactData.NAME?.trim()) {
+      alert('Поля "Фамилия" и "Имя" обязательны для заполнения');
       return;
     }
     
@@ -967,9 +1054,9 @@ const createContact = async () => {
     createLoading.value = true;
     
     const createData = {
-      NAME: newContactData.FULL_NAME?.split(' ')[1] || '',
-      LAST_NAME: newContactData.FULL_NAME?.split(' ')[0] || '',
-      SECOND_NAME: newContactData.FULL_NAME?.split(' ')[2] || '',
+      NAME: newContactData.NAME,
+      LAST_NAME: newContactData.LAST_NAME,
+      SECOND_NAME: newContactData.SECOND_NAME || '',
       POST: newContactData.POST || '',
       TYPE_ID: 'CLIENT'
     };
@@ -1022,7 +1109,19 @@ const createContact = async () => {
         }
       });
     });
-    
+
+    BX24.callMethod(	
+          'bizproc.workflow.start',
+          {
+              TEMPLATE_ID: 3246,
+              DOCUMENT_ID: [
+                  'crm',
+                  'CCrmDocumentCompany',
+                  'COMPANY_' + companyId.value
+              ],
+          }
+        );
+
     // Если мы в сделке, обновляем поле сделки UF_CRM_1754290331
     if (enityId.value === 'CRM_DEAL_DETAIL_TAB') {
       try {
